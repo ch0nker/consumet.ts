@@ -99,7 +99,7 @@ class Zoro extends models_1.AnimeParser {
          *
          * @param episodeId Episode id
          */
-        this.fetchEpisodeSources = async (episodeId, server = models_1.StreamingServers.VidCloud) => {
+        this.fetchEpisodeSources = async (episodeId, server = undefined) => {
             var _a;
             if (episodeId.startsWith('http')) {
                 const serverUrl = new URL(episodeId);
@@ -173,6 +173,26 @@ class Zoro extends models_1.AnimeParser {
                             if (!serverId)
                                 throw new Error('StreamTape not found');
                             break;
+                        default:
+                            let serverIds = this.retrieveServerIds($);
+                            let servers = {
+                                1: models_1.StreamingServers.VidCloud,
+                                3: models_1.StreamingServers.StreamTape,
+                                4: models_1.StreamingServers.VidStreaming,
+                                5: models_1.StreamingServers.StreamSB,
+                            };
+                            for (let id of serverIds) {
+                                serverId = this.retrieveServerId($, id, subOrDub);
+                                if (serverId) {
+                                    server = servers[id];
+                                    if (!server)
+                                        continue;
+                                    break;
+                                }
+                            }
+                            if (!serverId)
+                                throw new Error('Server not found');
+                            break;
                     }
                 }
                 catch (err) {
@@ -199,10 +219,12 @@ class Zoro extends models_1.AnimeParser {
             }
         };
         this.retrieveServerId = ($, index, subOrDub) => {
-            return $(`.ps_-block.ps_-block-sub.servers-${subOrDub} > .ps__-list .server-item`)
+            let elm = $(`.ps_-block.ps_-block-sub.servers-${subOrDub} > .ps__-list .server-item`)
                 .map((i, el) => ($(el).attr('data-server-id') == `${index}` ? $(el) : null))
-                .get()[0]
-                .attr('data-id');
+                .get()[0];
+            if (!elm)
+                return null;
+            return elm.attr('data-id');
         };
         /**
          * @param url string
@@ -621,6 +643,9 @@ class Zoro extends models_1.AnimeParser {
         catch (err) {
             throw new Error(err.message);
         }
+    }
+    retrieveServerIds($) {
+        return $('.item.server-item').map((i, elm) => parseInt(elm.attribs['data-server-id']));
     }
 }
 // (async () => {

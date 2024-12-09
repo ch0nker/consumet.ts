@@ -478,7 +478,7 @@ class Zoro extends AnimeParser {
    */
   override fetchEpisodeSources = async (
     episodeId: string,
-    server: StreamingServers = StreamingServers.VidCloud
+    server: StreamingServers | undefined = undefined
   ): Promise<ISource> => {
     if (episodeId.startsWith('http')) {
       const serverUrl = new URL(episodeId);
@@ -559,6 +559,28 @@ class Zoro extends AnimeParser {
 
             if (!serverId) throw new Error('StreamTape not found');
             break;
+          default:
+            let serverIds = this.retrieveServerIds($);
+            let servers: { [key: number]: StreamingServers } = {
+              1: StreamingServers.VidCloud,
+              3: StreamingServers.StreamTape,
+              4: StreamingServers.VidStreaming,
+              5: StreamingServers.StreamSB,
+            };
+
+            for (let id of serverIds) {
+              serverId = this.retrieveServerId($, id, subOrDub);
+              if (serverId) {
+                server = servers[id];
+
+                if (!server) continue;
+
+                break;
+              }
+            }
+
+            if (!serverId) throw new Error('Server not found');
+            break;
         }
       } catch (err) {
         throw new Error("Couldn't find server. Try another server");
@@ -587,12 +609,19 @@ class Zoro extends AnimeParser {
     }
   };
 
-  private retrieveServerId = ($: any, index: number, subOrDub: 'sub' | 'dub') => {
-    return $(`.ps_-block.ps_-block-sub.servers-${subOrDub} > .ps__-list .server-item`)
+  private retrieveServerId = ($: any, index: number, subOrDub: 'sub' | 'dub'): any => {
+    let elm = $(`.ps_-block.ps_-block-sub.servers-${subOrDub} > .ps__-list .server-item`)
       .map((i: any, el: any) => ($(el).attr('data-server-id') == `${index}` ? $(el) : null))
-      .get()[0]
-      .attr('data-id')!;
+      .get()[0];
+
+    if (!elm) return null;
+
+    return elm.attr('data-id')!;
   };
+
+  private retrieveServerIds($: any): number[] {
+    return $('.item.server-item').map((i: number, elm: any) => parseInt(elm.attribs['data-server-id']));
+  }
 
   /**
    * @param url string
